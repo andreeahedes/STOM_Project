@@ -38,6 +38,7 @@ def getpvalue(table):
 # print(fitting(vals))#use function above to get both fitting parameters and profile 
 # #for both data and background
 # print(fitting(background))
+
 chi1=[]
 for i in range(0,101):
     data=stom.generate_data(1000)
