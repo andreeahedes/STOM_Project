@@ -9,7 +9,11 @@ import STOM_higgs_tools as stom
 import matplotlib.pyplot as plt 
 import numpy as np 
 import scipy.optimize as spo 
-from scipy.stats import chi2_contingency
+from scipy.stats import chisquare
+from math import gamma
+
+def middles(x):
+    return (x[:(len(x)-1)]+x[1:])/2
 
 def exp_fit(data, lmda, a): 
     return a*np.exp(-data/lmda)
@@ -31,28 +35,57 @@ def fitting(data):#function for exponential fitting
     chi= getchisquared(bin_edges, bin_heights, fit[1], fit[0])
     return chi
 
-def getpvalue(table):
-    stat, p, dof, expected = chi2_contingency(table)
-    return p
-
-# print(fitting(vals))#use function above to get both fitting parameters and profile 
-# #for both data and background
-# print(fitting(background))
+def getpvalue(observed, expected, ddof):
+   chi, p= chisquare(observed, expected, ddof)
+   return p
 
 chi1=[]
-for i in range(0,101):
+for i in range(0,500):
     data=stom.generate_data(1000)
     c = fitting(data)
     chi1.append(c)
     
-chi2=[]
-for i in range(0,101):
-    back=stom.generate_background(1000000, 30)
-    ch=fitting(data)
-    chi2.append(ch)
+# chi2=[]
+# for i in range(0,500):
+#     back=stom.generate_data(1000,0)
+#     ch=fitting(back)
+#     chi2.append(ch)
     
-bin_heigths1, bin_edges1=np.histogram(chi1, bins=30)
-bin_heights2, bin_edges2=np.histogram(chi2, bins=30)
+bin_heights1, bin_edges1, patches1 = plt.hist(chi1, bins=30)
+# bin_heights2, bin_edges2, patches2 = plt.hist(chi2, bins=30)
 
-print(getpvalue([bin_heigths1,bin_heights2]))
+
+def chi_fit(x,k):
+    f= 1/(2**(k/2)*gamma(k/2))*x**(k/2 -1)*np.exp(-x/2)
+    return f 
+def areas(bin_heights, bin_edges):
+    area=sum(bin_heights*(bin_edges[:(len(bin_edges)-1)]+bin_edges[1:]))
+    return area
+
+middles1=middles(bin_edges1)
+#middles2=middles(bin_edges2)
+Area1=areas(bin_heights1,bin_edges1)
+#Area2=areas(bin_heights2, bin_edges2)
+
+initial=[58]
+fit1, cov_fit1=spo.curve_fit(chi_fit, middles1, bin_heights1, initial, maxfev=10**6) 
+plt.plot(middles1, chi_fit(middles1,fit1[0]))
+print(fit1)
+
+#%%
+from scipy.stats import chi2
+import STOM_higgs_tools as stom
+import matplotlib.pyplot as plt 
+import numpy as np 
+import scipy.optimize as spo 
+
+
+
+
+
+
+#%%
+
+
+
    
