@@ -1,17 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May 31 19:51:11 2021
-
-@author: ah920
-"""
-
 import STOM_higgs_tools as stom
 import matplotlib.pyplot as plt 
 import numpy as np 
 import scipy.optimize as spo 
 from scipy.stats import chisquare
-from math import gamma
 
+from scipy.special import gamma 
 def middles(x):
     return (x[:(len(x)-1)]+x[1:])/2
 
@@ -35,57 +28,75 @@ def fitting(data):#function for exponential fitting
     chi= getchisquared(bin_edges, bin_heights, fit[1], fit[0])
     return chi
 
-def getpvalue(observed, expected, ddof):
-   chi, p= chisquare(observed, expected, ddof)
-   return p
-
-chi1=[]
+data=stom.generate_data(400, A=0.1)
+c = fitting(data)
+    
+    
+chi2=[]
 for i in range(0,500):
-    data=stom.generate_data(1000)
-    c = fitting(data)
-    chi1.append(c)
+     back=stom.generate_background(100000, 30)
+     ch=fitting(back)
+     chi2.append(ch)
     
-# chi2=[]
-# for i in range(0,500):
-#     back=stom.generate_data(1000,0)
-#     ch=fitting(back)
-#     chi2.append(ch)
-    
-bin_heights1, bin_edges1, patches1 = plt.hist(chi1, bins=30)
-# bin_heights2, bin_edges2, patches2 = plt.hist(chi2, bins=30)
+bin_heights2, bin_edges2, patches2 = plt.hist(chi2, bins=30, density=True)
 
 
 def chi_fit(x,k):
     f= 1/(2**(k/2)*gamma(k/2))*x**(k/2 -1)*np.exp(-x/2)
     return f 
 def areas(bin_heights, bin_edges):
-    area=sum(bin_heights*(bin_edges[:(len(bin_edges)-1)]+bin_edges[1:]))
+    area=sum(bin_heights*(-bin_edges[:(len(bin_edges)-1)]+bin_edges[1:]))
     return area
 
-middles1=middles(bin_edges1)
-#middles2=middles(bin_edges2)
-Area1=areas(bin_heights1,bin_edges1)
-#Area2=areas(bin_heights2, bin_edges2)
+middles2=middles(bin_edges2)
+Area2=areas(bin_heights2, bin_edges2)
+'''
+def normalisation(heights, edges):
+    width=edges[1]-edges[0]
+    length=edges[len(edges)-1]-edges[0]
+    h=np.zeros_like(heights)
+    for i in range(0, 30):
+        h[i]=heights[i]*length/width
+    return h
+'''    
+initial=[30]
+#bin_norm1=normalisation(bin_heights1, bin_edges1)
+bin_norm= bin_heights2/Area2
+fit2, cov_fit2=spo.curve_fit(chi_fit, middles2 ,bin_norm, initial, maxfev=10**6) 
+plt.plot(middles2, chi_fit(middles2,fit2[0]))
+print(fit2)
+print(Area2)
+plt.show()
 
-initial=[58]
-fit1, cov_fit1=spo.curve_fit(chi_fit, middles1, bin_heights1, initial, maxfev=10**6) 
-plt.plot(middles1, chi_fit(middles1,fit1[0]))
-print(fit1)
 
+t = np.linspace(0, 60, 1000)
+fit_curve= chi_fit(t, fit2)
+
+plt.plot(t, fit_curve)
+plt.show()
 #%%
 from scipy.stats import chi2
-import STOM_higgs_tools as stom
-import matplotlib.pyplot as plt 
-import numpy as np 
-import scipy.optimize as spo 
 
-
-
-
-
-
+print(1-chi2.cdf(c, fit2))
 #%%
+""" 
+signal estimation thingy 
 
+"""
 
+def signal_back(x,A, lamb, mu, sig, signal_amp):
+    return A*np.exp(-x/lamb) + signal_gaus(x, mu, sig, signal_amp)
 
-   
+def fitting(data):#function for exponential fitting
+    initial=[30,40000,125, 1.5, 700]
+    bin_heights, bin_edges=np.histogram(data, range=(104, 155), bins=30 )
+    bin_middles=(bin_edges[:(len(bin_edges)-1)]+bin_edges[1:])/2
+    fit, fit_cov= spo.curve_fit(signal_back, bin_middles, bin_heights, initial, maxfev=10**6)
+    #plt.plot(bin_middles, exp_fit(bin_middles,*fit) )
+    #plt.show()
+    chi= getchisquared(bin_edges, bin_heights, fit[1], fit[0])
+    return chi, fit
+data=stom.generate_data(400)
+fit, chi= fitting(data)
+bin_heights, bin_edges=plt.hist(data, range=(104, 155), bins=30 )
+plt.plot(middles(bin_edges), signal_back(middles, *fit))
